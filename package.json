@@ -8,11 +8,10 @@
   "license": "MIT",
   "scripts": {
     "start": "micro",
-    "dev": "micro-dev"
+    "dev": "micro-dev -c"
   },
   "dependencies": {
-    "micro": "^9.0.2",
-    "youtube-dl": "^1.12.2"
+    "micro": "^9.0.2"
   },
   "devDependencies": {
     "micro-dev": "^2.1.1"
