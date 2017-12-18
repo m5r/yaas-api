@@ -1,0 +1,20 @@
+{
+  "name": "yaas",
+  "version": "1.0.0",
+  "description": "youtube-dl as a service",
+  "main": "index.js",
+  "repository": "https://github.com/m5r/yaas",
+  "author": "Mokhtar MIAL",
+  "license": "MIT",
+  "scripts": {
+    "start": "micro",
+    "dev": "micro-dev"
+  },
+  "dependencies": {
+    "micro": "^9.0.2",
+    "youtube-dl": "^1.12.2"
+  },
+  "devDependencies": {
+    "micro-dev": "^2.1.1"
+  }
+}
