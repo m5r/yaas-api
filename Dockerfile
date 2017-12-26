@@ -4,7 +4,8 @@ WORKDIR /root/yaas
 COPY . .
 
 RUN apk add --update \
-    python
+    python \
+    ffmpeg
 
 RUN yarn config set no-progress && \
     yarn --prod && \
