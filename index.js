@@ -10,7 +10,7 @@ const { accessKeyId, secretAccessKey, region } = require('./aws');
 const cors = microCors({
   allowMethods: ['POST'],
   allowHeaders: ['Accept', 'Content-Type'],
-  origin: 'https://yaas.tools'
+  origin: 'https://www.yaas.tools',
 });
 
 AWS.config.update({
