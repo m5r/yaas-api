@@ -11,5 +11,7 @@ RUN yarn config set no-progress && \
     yarn --prod && \
     yarn cache clean
 
+RUN ./bin/youtube-dl --no-check-certificate -U
+
 EXPOSE 3000
 CMD yarn start
