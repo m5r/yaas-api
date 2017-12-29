@@ -52,6 +52,12 @@ module.exports = cors(async (req, res) => {
       Key,
       Body: fileStream,
       ACL: 'public-read',
+      ContentType : 'audio/mpeg',
+      ContentDisposition: 'attachment',
+      Tagging: `requester=${(req.headers['x-forwarded-for'] || '').split(',')[0] || req.connection.remoteAddress}`,
+      Metadata: {
+        from: url,
+      },
     })
       .promise()
       .then(data => send(res, 200, data.Location))
