@@ -29,27 +29,55 @@ const cors = microCors({
   origin: 'https://www.yaas.tools',
 });
 
+const computeOutputFileName = (filename) => {
+  const { dir, name } = path.parse(filename);
+  return `${path.join(dir, name)}.mp3`;
+};
+
+const computeFileUrl = (Key) => `https://s3-eu-west-1.amazonaws.com/yaas/${Key}`;
+
+const computeResponse = ({ Key, source, thumbnail, title }) => ({
+  url: computeFileUrl(Key),
+  source,
+  thumbnail,
+  title,
+});
+
+const cache = {
+  async get(key) {
+    return JSON.parse(await redis.get(key));
+  },
+  set(key, value) {
+    redis.set(key, JSON.stringify(value));
+  },
+};
+
 module.exports = cors(async (req, res) => {
   const { url } = await json(req);
-  const keyFromUrl = await redis.get(url);
+  const dataFromUrl = await cache.get(url);
 
-  if (keyFromUrl) {
-    return send(res, 200, `https://s3-eu-west-1.amazonaws.com/yaas/${keyFromUrl}`);
+  if (dataFromUrl) {
+    return send(res, 200, dataFromUrl);
   }
 
-  const { stdout: filename } = await exec(`./bin/youtube-dl --no-check-certificate -o './out/%(title)s.%(ext)s' --get-filename --restrict-filenames ${url}`);
-  const { dir, name } = path.parse(filename);
-  const outputFileName = `${path.join(dir, name)}.mp3`;
+  const { stdout } = await exec(`./bin/youtube-dl --no-check-certificate -o './out/%(title)s.%(ext)s' --get-filename --restrict-filenames --dump-json ${url}`);
+  const [fileName, meta] = stdout.split('\n');
+  const outputFileName = computeOutputFileName(fileName);
   const Key = path.basename(outputFileName);
+  const dataFromKey = await cache.get(Key);
 
-  if (await redis.get(Key)) {
-    return send(res, 200, `https://s3-eu-west-1.amazonaws.com/yaas/${Key}`);
+  if (dataFromKey) {
+    return send(res, 200, dataFromKey);
   }
 
   try {
-    await s3.headObject({ Key }).promise();
+    const { Metadata: { source, thumbnail, title } } = await s3.headObject({ Key }).promise();
+    const response = computeResponse({ Key, source, thumbnail, title });
 
-    return send(res, 200, `https://s3-eu-west-1.amazonaws.com/yaas/${Key}`);
+    cache.set(Key, response);
+    cache.set(url, response);
+
+    return send(res, 200, computeResponse({ Key, source, thumbnail, title }));
   } catch (e) {
     const { stderr } = await exec(`./bin/youtube-dl --no-check-certificate -o './out/%(title)s.%(ext)s' --restrict-filenames --add-metada --extract-audio --audio-format mp3 --audio-quality 0 "${url}"`);
 
@@ -58,8 +86,11 @@ module.exports = cors(async (req, res) => {
       send(res, 500, 'Error when calling youtube-dl');
     }
 
-    redis.set(Key, url);
-    redis.set(url, Key);
+    const { thumbnail, title, webpage_url: source } = JSON.parse(meta);
+    const response = computeResponse({ Key, source, thumbnail, title });
+
+    cache.set(Key, response);
+    cache.set(url, response);
 
     const fileStream = createReadStream(outputFileName);
     return s3.upload({
@@ -70,11 +101,13 @@ module.exports = cors(async (req, res) => {
       ContentDisposition: 'attachment',
       Tagging: `requester=${(req.headers['x-forwarded-for'] || '').split(',')[0] || req.connection.remoteAddress}`,
       Metadata: {
-        from: url,
+        source,
+        thumbnail,
+        title,
       },
     })
       .promise()
-      .then(data => send(res, 200, data.Location))
+      .then(() => send(res, 200, response))
       .catch(err => send(res, 500, err))
       .then(() => unlinkSync(outputFileName));
   }
