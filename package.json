@@ -11,7 +11,7 @@
     "dev": "micro-dev -p 9000 -c"
   },
   "dependencies": {
-    "aws-sdk": "^2.174.0",
+    "aws-sdk": "^2.178.0",
     "ioredis": "^3.2.2",
     "micro": "^9.0.2",
     "micro-cors": "^0.0.4"
